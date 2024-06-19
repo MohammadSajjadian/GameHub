@@ -1,4 +1,4 @@
-Guess the Word
+<h3>Guess the Word</h3>
 Overview
 "Guess the Word" is an interactive web-based game developed using Blazor. The game challenges players to guess a hidden word within a limited time, providing hints and managing user health points to enhance gameplay. This project demonstrates the integration of various services and the use of Blazor's component model to build a dynamic and engaging user experience.
 
