@@ -7,4 +7,3 @@
 - **Interactive Gameplay**: Guess the word by filling in the letters.
 - **Hints and Guidance**: Provides hints to help players guess the word.
 - **Health Management**: Tracks player health, requiring them to maintain a certain level to continue playing.
-- **Responsive Design**: Adapts to different screen sizes for a consistent experience across devices.
