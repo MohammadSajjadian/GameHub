@@ -1,0 +1,9 @@
+﻿<div class="alert alert-@(string.Equals(Status, "success") ? "success" : "danger") alert-dismissible fade show" role="alert">
+    @Message
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Status { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Message { get; set; } = string.Empty;
+}

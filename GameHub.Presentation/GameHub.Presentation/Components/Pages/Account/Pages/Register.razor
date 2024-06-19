@@ -1,0 +1,74 @@
+﻿@page "/account/register"
+
+@inject IUserStore<ApplicationUser> UserStore
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Register</PageTitle>
+
+<h1>Register</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <StatusMessage Message="@Message" />
+        <EditForm Model="RegisterDto" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
+            <h2>Create a new account.</h2>
+            <hr />
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="RegisterDto.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                <label for="email">Email</label>
+                <ValidationMessage For="() => RegisterDto.Email" class="text-danger" />
+            </div>
+            <div class="form-floating mb-3">
+                <InputText type="password" @bind-Value="RegisterDto.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
+                <label for="password">Password</label>
+                <ValidationMessage For="() => RegisterDto.Password" class="text-danger" />
+            </div>
+            <div class="form-floating mb-3">
+                <InputText type="password" @bind-Value="RegisterDto.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
+                <label for="confirm-password">Confirm Password</label>
+                <ValidationMessage For="() => RegisterDto.ConfirmPassword" class="text-danger" />
+            </div>
+            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
+            <DataAnnotationsValidator />
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private IEnumerable<IdentityError>? identityErrors;
+
+    [SupplyParameterFromForm]
+    private RegisterDto RegisterDto { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
+
+    public async Task RegisterUser()
+    {
+        var user = new ApplicationUser
+        {
+            Email = RegisterDto.Email,
+            UserName = RegisterDto.Email,
+            EmailConfirmed = true
+        };
+
+        await UserStore.SetUserNameAsync(user, RegisterDto.Email, CancellationToken.None);
+        var result = await UserManager.CreateAsync(user, RegisterDto.Password);
+
+        if (!result.Succeeded)
+        {
+            identityErrors = result.Errors;
+            return;
+        }
+
+        Console.WriteLine("User created a new account with password.");
+
+        await SignInManager.SignInAsync(user, isPersistent: false);
+        RedirectManager.RedirectTo(ReturnUrl);
+    }
+}

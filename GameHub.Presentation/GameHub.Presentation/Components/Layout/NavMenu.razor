@@ -1,0 +1,63 @@
+﻿@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Game Hub</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="categories">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Guess the words
+            </NavLink>
+
+            <AuthorizeView>
+                <Authorized>
+                    <form action="/logout" method="post">
+                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                        <AntiforgeryToken />
+                        <button type="submit" class="nav-link">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Logout
+                        </button>
+                    </form>
+                </Authorized>
+
+                <NotAuthorized>
+                    <NavLink class="nav-link" href="account/register">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Register
+                    </NavLink>
+                    <NavLink class="nav-link" href="account/login">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Login
+                    </NavLink>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </nav>
+</div>
+
+@code{
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

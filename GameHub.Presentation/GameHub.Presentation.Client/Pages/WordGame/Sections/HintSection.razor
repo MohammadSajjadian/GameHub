@@ -1,0 +1,10 @@
+﻿<div class="container card text-dark mt-5" style="top: 2rem; width: 30rem; background-color: #fff3cd;">
+    <div class="card-body">
+        <h5 class="card-title">💡Hint</h5>
+        <p class="card-text">@Text</p>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = default!;
+}

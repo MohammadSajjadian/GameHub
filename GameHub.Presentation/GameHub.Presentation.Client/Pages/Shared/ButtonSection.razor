@@ -1,0 +1,10 @@
+﻿<button @onclick="Action" class="@Class">@Text</button>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = default!;
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public EventCallback Action { get; set; }
+}

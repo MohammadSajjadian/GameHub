@@ -1,0 +1,208 @@
+﻿@page "/manage-levels"
+@rendermode InteractiveServer
+
+@attribute [StreamRendering]
+@attribute [Authorize(Roles = "Admin")]
+
+@inject ICategoryService CategoryService
+@inject IWordGameLevelService LevelService
+@inject ModalService ModalService
+
+<h3>Manage Levels</h3>
+@if (!string.IsNullOrEmpty(message))
+{
+    <AlertSection Status="@status" Message="@message" />
+}
+<div class="container mt-4">
+    @if (tempLevelDtos!.Any())
+    {
+        <div class="table-responsive">
+            <QuickGrid Items="levelDtos" Class="table table-striped table-bordered table-hover" Pagination="pagination">
+                <PropertyColumn Title="Id" Property="@(l => l.Id)" Sortable="true" />
+                <TemplateColumn Title="Level Number" SortBy="sortByLevelNumber">
+                    <Editable IsEditable="@(editedItemId != context.Id)">
+                        <MainContent>
+                            <p>@context.LevelNumber</p>
+                        </MainContent>
+
+                        <EditContent>
+                            <InputNumber @bind-Value="context.LevelNumber" class="form-control" />
+                        </EditContent>
+                    </Editable>
+                </TemplateColumn>
+                <TemplateColumn Title="Word" SortBy="sortByWord">
+                    <Editable IsEditable="@(editedItemId != context.Id)">
+                        <MainContent>
+                            <p>@context.Word</p>
+                        </MainContent>
+
+                        <EditContent>
+                            <InputText @bind-Value="context.Word" class="form-control" />
+                        </EditContent>
+                    </Editable>
+                </TemplateColumn>
+                <TemplateColumn Title="Hint" SortBy="sortByHint">
+                    <Editable IsEditable="@(editedItemId != context.Id)">
+                        <MainContent>
+                            <p>@context.Hint</p>
+                        </MainContent>
+
+                        <EditContent>
+                            <InputTextArea @bind-Value="context.Hint" class="form-control" />
+                        </EditContent>
+                    </Editable>
+                </TemplateColumn>
+                <TemplateColumn Title="Category" SortBy="sortByCategory">
+                    <Editable IsEditable="@(editedItemId != context.Id)">
+                        <MainContent>
+                            <p>@context.CategoryDto.Name</p>
+                        </MainContent>
+
+                        <EditContent>
+                            <InputSelect @bind-Value="context.CategoryDto.Id" class="form-select">
+                                @foreach (var category in categoryDtos!)
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </InputSelect>
+                        </EditContent>
+                    </Editable>
+                </TemplateColumn>
+                <TemplateColumn Title="Difficulty" SortBy="sortByDifficulty">
+                    <Editable IsEditable="@(editedItemId != context.Id)">
+                        <MainContent>
+                            <p>@context.LevelStatus</p>
+                        </MainContent>
+
+                        <EditContent>
+                            <InputSelect @bind-Value="context.LevelStatus" class="form-select">
+                                @foreach (var status in Enum.GetNames(typeof(LevelStatus)))
+                                {
+                                    <option value="@status">@status</option>
+                                }
+                            </InputSelect>
+                        </EditContent>
+                    </Editable>
+                </TemplateColumn>
+                <TemplateColumn Title="Actions">
+                    <Editable IsEditable="@(editedItemId != context.Id)">
+                        <MainContent>
+                            <ButtonSection Text="Edit" Action="() => MakeInputSelectable(context.Id)" Class="btn btn-outline-warning me-2" />
+                            <ButtonSection Text="Remove" Action="() => DeleteLevel(context.Id)" Class="btn btn-outline-danger" />
+                        </MainContent>
+
+                        <EditContent>
+                            <ButtonSection Text="Save" Action="() => UpdateLevel(context)" Class="btn btn-success" />
+                            <ButtonSection Text="Cancel" Action="CancelUpdate" Class="btn btn-danger" />
+                        </EditContent>
+                    </Editable>
+                </TemplateColumn>
+            </QuickGrid>
+        </div>
+        <Paginator State="pagination" />
+    }
+    else
+    {
+        <h3>There is no level to show</h3>
+    }
+</div>
+<ModalSection />
+
+@code {
+    private IQueryable<WordGameLevelDto>? levelDtos;
+    private List<WordGameLevelDto>? tempLevelDtos = new();
+    private List<CategoryDto>? categoryDtos = new();
+
+    private GridSort<WordGameLevelDto> sortByLevelNumber = GridSort<WordGameLevelDto>.ByAscending(x => x.LevelNumber).ThenDescending(x => x.LevelNumber);
+    private GridSort<WordGameLevelDto> sortByWord = GridSort<WordGameLevelDto>.ByAscending(x => x.Word).ThenDescending(x => x.Word);
+    private GridSort<WordGameLevelDto> sortByHint = GridSort<WordGameLevelDto>.ByAscending(x => x.Hint).ThenDescending(x => x.Hint);
+    private GridSort<WordGameLevelDto> sortByCategory = GridSort<WordGameLevelDto>.ByAscending(x => x.CategoryDto.Name).ThenDescending(x => x.CategoryDto.Name);
+    private GridSort<WordGameLevelDto> sortByDifficulty = GridSort<WordGameLevelDto>.ByAscending(x => x.LevelStatus).ThenDescending(x => x.LevelStatus);
+    private PaginationState pagination = new() { ItemsPerPage = 10 };
+
+    private int editedItemId;
+    private string message = string.Empty;
+    private string status = string.Empty;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        CancellationTokenSource cts = new();
+        List<WordGameLevelDto>? response = await LevelService.GetAllAsync(cts.Token);
+
+        levelDtos = response?.AsQueryable();
+        tempLevelDtos = response?.Select(l => new WordGameLevelDto
+        {
+            Id = l.Id,
+            LevelNumber = l.LevelNumber,
+            Word = l.Word,
+            Hint = l.Hint,
+            CategoryDto = l.CategoryDto,
+            LevelStatus = l.LevelStatus
+        }).ToList();
+
+        categoryDtos = await CategoryService.GetAllAsync(cts.Token);
+    }
+
+    private async void DeleteLevel(int levelId, CancellationToken cancellationToken = default)
+    {
+        var result = await ModalService.FireAsync(new ModalOptions { Text = "Are you sure you want to delete the level??", ShowConfirmButton = true, ShowDenyButton = true });
+        if (result.IsConfirmed)
+        {
+            int deletedItem = await LevelService.DeleteAsync(levelId, cancellationToken);
+
+            message = deletedItem == 0 ? "Failed to delete level" : "Level deleted successfully";
+            status = deletedItem == 0 ? "danger" : "success";
+
+            DeleteLevelFromTable(levelId);
+            StateHasChanged();
+        }
+    }
+
+
+    private void DeleteLevelFromTable(int id)
+        => levelDtos = levelDtos?.Where(l => l.Id != id);
+
+
+    private async void UpdateLevel(WordGameLevelDto levelDto, CancellationToken cancellationToken = default)
+    {
+        var result = await ModalService.FireAsync(new ModalOptions { Text = "Are you sure you want to update the level??", ShowConfirmButton = true, ShowDenyButton = true });
+
+        if (result.IsConfirmed)
+        {
+            int updateResult = await LevelService.UpdateAsync(levelDto, cancellationToken);
+
+            status = updateResult == -1 || updateResult == -2 || updateResult == 0 ? "danegr" : "success";
+            message = updateResult == -1 ? "Validation failed" : updateResult == -2 ? "Level already exist" : updateResult == 0 ? "Failed to update level" : "Level updated successfully";
+            if (updateResult > 0) // Success
+            {
+                MakeInputUnSelectable();
+            }
+            StateHasChanged();
+            message = string.Empty;
+        }
+    }
+
+
+    private void MakeInputSelectable(int levelId)
+        => editedItemId = levelId;
+
+
+    private void MakeInputUnSelectable()
+        => editedItemId = 0;
+
+
+    private void CancelUpdate()
+    {
+        WordGameLevelDto? tempItem = tempLevelDtos?.Single(dto => dto.Id == editedItemId);
+        WordGameLevelDto? tableItem = levelDtos?.Single(dto => dto.Id == editedItemId);
+
+        tableItem!.LevelNumber = tempItem!.LevelNumber;
+        tableItem.Word = tempItem.Word;
+        tableItem.Hint = tempItem.Hint;
+        tableItem.CategoryDto.Name = tempItem.CategoryDto.Name;
+        tableItem.LevelStatus = tempItem.LevelStatus;
+
+        MakeInputUnSelectable();
+    }
+}

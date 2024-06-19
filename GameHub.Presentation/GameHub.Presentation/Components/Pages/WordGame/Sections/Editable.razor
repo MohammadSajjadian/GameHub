@@ -1,0 +1,19 @@
+﻿@if (IsEditable)
+{
+    @MainContent
+}
+else
+{
+    @EditContent
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public bool IsEditable { get; set; }
+
+    [Parameter, EditorRequired]
+    public RenderFragment MainContent { get; set; } = default!;
+    
+    [Parameter, EditorRequired]
+    public RenderFragment EditContent { get; set; } = default!;
+}

@@ -1,0 +1,33 @@
+﻿<div class="col">
+    <a class="text-decoration-none" href="javascript:;" @onclick="() => OnNav.InvokeAsync(LevelDto.Id)">
+        <div class="card @levelColor text-center">
+            <div class="card-body">
+                @*<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="grey" class="bi bi-lock-fill" viewBox="0 0 16 16">
+                    <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2" />
+                </svg>*@
+                <h5 class="card-title">@LevelDto.LevelNumber</h5>
+                <p class="card-text">@LevelDto.LevelStatus</p>
+            </div>
+        </div>
+    </a>
+</div>
+
+@code {
+    private string levelColor = string.Empty;
+
+    [Parameter, EditorRequired]
+    public WordGameLevelDto LevelDto { get; set; } = default!;
+    [Parameter, EditorRequired]
+    public EventCallback<int> OnNav { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        levelColor = LevelDto.LevelStatus switch
+        {
+            LevelStatus.Easy => "border-success btn-outline-success",
+            LevelStatus.Medium => "border-warning btn-outline-warning",
+            LevelStatus.Hard => "border-danger btn-outline-danger",
+            _ => throw new ArgumentOutOfRangeException(nameof(LevelDto.LevelStatus), $"Not expected difficulty value: {LevelDto.LevelStatus}")
+        };
+    }
+}

@@ -1,0 +1,21 @@
+﻿@page "/"
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.
+
+@message
+
+@code{
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? message;
+
+    protected override void OnInitialized()
+    {
+        message = HttpContext?.User?.Identity?.Name;
+    }
+}

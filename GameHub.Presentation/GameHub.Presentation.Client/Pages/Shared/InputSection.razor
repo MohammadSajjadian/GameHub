@@ -1,0 +1,12 @@
+﻿<div class="mt-2">
+    <label>@Label:</label>
+    @ChildContent
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = default!;
+}

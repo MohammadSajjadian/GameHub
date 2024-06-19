@@ -1,0 +1,66 @@
+﻿@page "/categories"
+
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+
+@inject IMediator Mediator
+@inject ICategoryService CategoryService
+@inject AuthenticationStateProvider Auth
+@inject NavigationManager NavManager
+@inject HealthService HealthService
+
+<div class="d-flex justify-content-between">
+    <h3>Categories</h3>
+    <Health Value="HealthService.Value" />
+</div>
+@if (categoryDtos!.Any())
+{
+    <div class="row row-cols-1 row-cols-md-4 g-4 justify-content-center mt-5">
+        @foreach (var categoryDto in categoryDtos!)
+        {
+            <CategoryCardSection CategoryDto="categoryDto" OnNav="NavToLevels" />
+        }
+    </div>
+}
+else
+{
+    <p>There is no level to show</p>
+}
+
+@code {
+    private List<CategoryDto>? categoryDtos = new();
+    private bool? isAuthenticated;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var cts = new CancellationTokenSource();
+            var authState = await ConfigAuthAsync();
+            if (isAuthenticated is true)
+            {
+                int profileHealth = await HealthService.GetProfileHealthAsync(authState.User.Identity?.Name!);
+            }
+            else
+            {
+                int? localHealth = await HealthService.GetLocalHealthAsync();
+            }
+            categoryDtos = await CategoryService.GetAllAsync(cts.Token);
+            StateHasChanged();
+        }
+    }
+
+    private async Task<AuthenticationState> ConfigAuthAsync()
+    {
+        var authState = await Auth.GetAuthenticationStateAsync();
+        isAuthenticated = authState.User.Identity?.IsAuthenticated;
+
+        return authState;
+    }
+
+    private void NavToLevels(int categoryId, string categoryName)
+    {
+        NavManager.NavigateTo($"/WordGame-levels/{categoryName}/{categoryId}");
+    }
+}

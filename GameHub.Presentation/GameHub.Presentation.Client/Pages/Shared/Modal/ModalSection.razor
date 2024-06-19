@@ -1,0 +1,52 @@
+﻿@implements IDisposable
+@inject ModalService ModalService
+
+<div class="modal fade" id="mainModal" data-bs-backdrop="@(!ModalService.modalOptions.AllowOutsideClick ? "static" : "")" tabindex="-1" role="dialog" aria-labelledby="mainModal" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title w-100 text-center" id="">@ModalService.modalOptions.Title</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-center fs-@(ModalService.modalOptions.TextSize != 0 ? ModalService.modalOptions.TextSize : 4)">@ModalService.modalOptions.Text</p>
+            </div>
+            <div class="modal-footer">
+                @if (ModalService.modalOptions.ShowDenyButton)
+                {
+                    <button @onclick="ModalService.DenyButton" type="button"
+                            class="btn btn-@(!string.IsNullOrEmpty(ModalService.modalOptions.DenyButtonColor) ? ModalService.modalOptions.DenyButtonColor : "secondary")">
+                        @(!string.IsNullOrEmpty(ModalService.modalOptions.DenyButtonText) ? ModalService.modalOptions.DenyButtonText : "Close")
+                    </button>
+                }
+                @if (ModalService.modalOptions.ShowConfirmButton)
+                {
+                    <button @onclick="ModalService.ConfirmButton" type="button"
+                            class="btn btn-@(!string.IsNullOrEmpty(ModalService.modalOptions.ConfirmButtonColor) ? ModalService.modalOptions.ConfirmButtonColor : "primary")">
+                        @(!string.IsNullOrEmpty(ModalService.modalOptions.ConfirmButtonText) ? ModalService.modalOptions.ConfirmButtonText : "Save Changes")
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ModalService.InitializeAsync();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        ModalService.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        ModalService.OnChange -= StateHasChanged;
+    }
+}
