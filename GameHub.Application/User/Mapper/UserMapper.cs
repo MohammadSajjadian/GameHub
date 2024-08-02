@@ -9,6 +9,8 @@ public class UserMapper : IUserMapper
     {
         return new ApplicationUserDto
         {
+            Id = user.Id,
+            UserName = user.UserName!,
             Health = user.Health,
             Coin = user.Coin
         };

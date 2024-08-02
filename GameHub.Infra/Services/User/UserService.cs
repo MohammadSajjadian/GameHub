@@ -2,11 +2,12 @@
 using GameHub.Application.User.Mapper;
 using GameHub.Application.User.Repository;
 using GameHub.Domain.Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 
 namespace GameHub.Infra.Services.User;
 
-public class UserService(UserManager<ApplicationUser> userManager, IUserMapper mapper) : IUserService
+public class UserService(UserManager<ApplicationUser> userManager, IUserMapper mapper, IHttpContextAccessor httpContextAccessor) : IUserService
 {
     public async Task<ApplicationUserDto?> GetUserAsync(string userName)
     {
@@ -19,6 +20,18 @@ public class UserService(UserManager<ApplicationUser> userManager, IUserMapper m
             return null;
 
         return mapper.Map(user);
+    }
+
+    public async Task<ApplicationUserDto> GetCurrentUserAsync()
+    {
+        var user = await userManager.FindByNameAsync(httpContextAccessor.HttpContext.User.Identity!.Name!);
+        return mapper.Map(user!);
+    }
+
+    public async Task<string> GetUserIdAsync(string userName)
+    {
+        var user = await userManager.FindByNameAsync(userName);
+        return user!.Id;
     }
 
     public async Task<int> UpdateHealthAsync(string userName)

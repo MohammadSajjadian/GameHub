@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
-using GameHub.Application.Category.Mapper;
+using GameHub.Application.ImageGame.Image.Mapper;
+using GameHub.Application.ImageGame.Room.Mapper;
 using GameHub.Application.User.Mapper;
 using GameHub.Application.WordGame.Level.Mapper;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,8 +17,11 @@ public static class ServiceCollectionExtension
         services.AddMediatR(conf => conf.RegisterServicesFromAssembly(typeof(ServiceCollectionExtension).Assembly));
 
         services.AddScoped<IUserMapper, UserMapper>();
-        services.AddScoped<ICategoryMapper, CategoryMapper>();
-        services.AddScoped<IWordGameLeveMapper, WordGameLeveMapper>();
+        services.AddScoped<WordGame.Category.Mapper.ICategoryMapper, WordGame.Category.Mapper.CategoryMapper>();
+        services.AddScoped<ILeveMapper, LeveMapper>();
+        services.AddScoped<IRoomMapper, RoomMapper>();
+        services.AddScoped<ImageGame.Category.Mapper.ICategoryMapper, ImageGame.Category.Mapper.CategoryMapper>();
+        services.AddScoped<IImageMapper, ImageMapper>();
 
         return services;
     }

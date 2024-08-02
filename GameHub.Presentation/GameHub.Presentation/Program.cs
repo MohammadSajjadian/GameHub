@@ -1,50 +1,25 @@
 using GameHub.Application;
-using GameHub.Domain.Entities;
 using GameHub.Infra;
-using GameHub.Infra.BackroundTasks;
 using GameHub.Presentation.Client;
-using GameHub.Presentation.Components;
-using GameHub.Presentation.Components.Pages.Account;
 using GameHub.Presentation.Configuration;
-using GameHub.Presentation.Endpoints.Account;
-using GameHub.Presentation.Endpoints.Category;
-using GameHub.Presentation.Endpoints.User;
-using GameHub.Presentation.Endpoints.WordGame.Level;
-using GameHub.Presentation.Exceptions;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
-using Swashbuckle.AspNetCore.SwaggerGen;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddInteractiveWebAssemblyComponents();
+builder.Services.ConfigureBlazor();
 
 builder.Services.AddPresentationClient();
 builder.Services.AddApplication();
 builder.Services.AddInfraStructure(builder.Configuration);
 
-builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddIdentity();
-builder.Services.AddSwaggerOptions();
-builder.Services.AddExceptionHandler<DefaultExceptionHandler>();
-
-builder.Services.AddSingleton<IConfigureOptions<SwaggerGenOptions>, SwaggerConfigurationsOptions>();
-builder.Services.AddScoped<IdentityRedirectManager>();
-
-builder.Services.AddHostedService<HealthBackgroundService>();
+builder.Services.ConfigureIdentity();
+builder.Services.ConfigureSignalR();
+builder.Services.ConfigureSwagger();
+builder.Services.ConfigureHostedServices();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-
-    await IdentityConfigurationsExtension.InitializeRole(roleManager, userManager);
-}
+await app.ConfigureRole();
 
 if (app.Environment.IsDevelopment())
 {
@@ -61,24 +36,19 @@ else
     app.UseHsts();
 }
 
-app.UseExceptionHandler(x => { });
+app.UseResponseCompression();
+app.ConfigureExceptionsHandlerMiddlewares();
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot\\Images")),
+    RequestPath = "/Images"
+});
+app.ConfigureIdentityMiddlewares();
 app.UseAntiforgery();
-
-app.MapLevelEndpoints();
-app.MapCategoryEndpoints();
-app.MapUserEndpoints();
-app.MapLogOutEndpoint();
-
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode()
-    .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(GameHub.Presentation.Client._Imports).Assembly);
+app.ConfigureEndpoints();
+app.ConfigureBlazorMiddleWares();
+app.ConfigureSignalRMiddleWares();
 
 app.Run();

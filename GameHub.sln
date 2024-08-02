@@ -21,6 +21,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Application", "Application"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GameHub.Application", "GameHub.Application\GameHub.Application.csproj", "{20FFB29D-C101-4D2C-8987-CC4A8556DF58}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{5513BB6B-CB7B-4C04-B7C9-711E76ACA831}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GameHub.Test", "GameHub.Test\GameHub.Test.csproj", "{BE6108A5-DBD7-4600-A762-30BE40249DEA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +51,10 @@ Global
 		{20FFB29D-C101-4D2C-8987-CC4A8556DF58}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{20FFB29D-C101-4D2C-8987-CC4A8556DF58}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{20FFB29D-C101-4D2C-8987-CC4A8556DF58}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE6108A5-DBD7-4600-A762-30BE40249DEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE6108A5-DBD7-4600-A762-30BE40249DEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE6108A5-DBD7-4600-A762-30BE40249DEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE6108A5-DBD7-4600-A762-30BE40249DEA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -57,6 +65,7 @@ Global
 		{B5CBA408-7EEE-402D-818E-1E9CE4CBD72B} = {37552610-65A9-48CF-8CE2-D44CF0E267B5}
 		{67B0F276-A17C-47CE-ADD4-ACFD71797A90} = {137086EC-5A42-4D04-9C64-6F2CEE61A0B3}
 		{20FFB29D-C101-4D2C-8987-CC4A8556DF58} = {1F6FF212-9E84-4641-A097-45F3D5F6C3BA}
+		{BE6108A5-DBD7-4600-A762-30BE40249DEA} = {5513BB6B-CB7B-4C04-B7C9-711E76ACA831}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {EE012C5E-6187-4009-BA35-F30E07D7C24A}

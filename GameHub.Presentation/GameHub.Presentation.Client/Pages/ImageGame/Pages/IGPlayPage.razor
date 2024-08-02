@@ -1,0 +1,237 @@
+﻿@page "/imageGame/{RoomId:int}"
+@rendermode @(new InteractiveWebAssemblyRenderMode(false))
+@implements IAsyncDisposable
+@attribute [Authorize]
+
+@using GameHub.Application.ImageGame.Room.Dto
+@using GameHub.Application.ImageGame.Room.Queries.Requests
+@using GameHub.Application.ImageGame.Room.Commands.Requests
+@using GameHub.Application.ImageGame.Image.Queries.Requests
+
+@inject IMediator Mediator
+@inject AuthenticationStateProvider Auth
+@inject NavigationManager NavigationManager
+@inject ImageGameService ImageGameService
+@inject ModalService ModalService
+
+<h3>Guess the images</h3>
+<CountDown @ref="_timer" TimerOut="TimeOut" />
+@if (_roomDto is not null && IsUserBelongToRoom(_currentUserName, _roomDto?.GuestUserName!))
+{
+    <div class="d-flex justify-content-between mt-3">
+        <h5 class="text-success">Your Score: @(_currentUserName == _roomDto!.CreatorUserName ? ImageGameService.CreatorScore : ImageGameService.GuestScore)</h5>
+        <h5 class="text-secondary">@(IsMyTurn() ? "It's your turn!" : $"Waiting for {(_currentUserName == _roomDto!.CreatorUserName ? _roomDto.GuestUserName : _roomDto.CreatorUserName)}...")</h5>
+        <h5 class="text-danger">Opponent's Score: @(_currentUserName == _roomDto!.CreatorUserName ? ImageGameService.GuestScore : ImageGameService.CreatorScore)</h5>
+    </div>
+    <div class="d-flex flex-wrap justify-content-center mt-5">
+        @foreach (var image in ImageGameService.Images)
+        {
+            if (image.IsVisible)
+            {
+                <div class="p-1">
+                    <div class="card border-primary text-center" style="width: 130px; height: 130px;">
+                        <img src="/Images/@image.Value" class="img-fluid" style="width: 100%; height: 100%; object-fit: contain;" />
+                    </div>
+                </div>
+            }
+            else
+            {
+                if (IsMyTurn() && _isGameEnded is false)
+                {
+                    <div class="p-1">
+                        <a class="text-decoration-none" href="javascript:;" @onclick="() => SelectedImageProcess(image.Id)">
+                            <div class="card border-primary btn-outline-primary text-center" style="width: 130px; height: 130px;">
+                                <div class="card-body d-flex align-items-center justify-content-center">
+                                    <h5 class="card-title">?</h5>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <div class="p-1">
+                        <div class="card border-primary btn-outline-primary text-center" style="width: 130px; height: 130px;">
+                            <div class="card-body d-flex align-items-center justify-content-center">
+                                <h5 class="card-title">?</h5>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </div>
+    <ModalSection />
+}
+else
+{
+    <p>@_message</p>
+}
+
+@code {
+    private HubConnection? _hubConnection;
+    private RoomDto? _roomDto;
+    private CountDown _timer = default!;
+    private string _currentUserName = string.Empty;
+    private string _pussy = string.Empty;
+    private string _message = string.Empty;
+    private bool _isGameEnded;
+
+    [Parameter, EditorRequired] public int RoomId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCurrentUserAsync();
+
+        var response = await Mediator.Send(new GetRoomRequest(RoomId));
+        if (response.RoomDto is null)
+        {
+            _message = response.Message!;
+            return;
+        }
+
+        _roomDto = response.RoomDto;
+        if (!IsUserBelongToRoom(_roomDto!.CreatorUserName!, _roomDto.GuestUserName!))
+        {
+            _message = "This room is not belong to you.";
+            return;
+        }
+
+        var images = await GetImagesAsync();
+        if (images is null)
+        {
+            _message = "There are no any images.";
+            return;
+        }
+        ImageGameService.Initialize(images, _roomDto.Id);
+
+        await SignalrConnectionConfig();
+        ImageGameService.OnEndGame += EndGame;
+        _timer.Start(_roomDto!.Time);
+    }
+
+    private async Task SignalrConnectionConfig()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/imageGame-hub"))
+            .Build();
+
+        _hubConnection.On<int>("ReceiveProcessImageMessage", async id =>
+        {
+            var image = ImageGameService.Images.FirstOrDefault(i => i.Id == id);
+
+            image?.MarkAsVisible();
+            await InvokeAsync(StateHasChanged);
+
+            await ImageGameService.AddSelectedItem(image!);
+            await InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On("ReceiveDisconnectedMessage", async () =>
+        {
+            StopGame();
+            await Mediator.Send(new DeleteRoomRequest(_roomDto!.Id));
+
+            var result = await ModalService.FireAsync(new ModalOptions() { Text = "Opponent disconnected.", ShowConfirmButton = true, ConfirmButtonText = "Go to Room→" });
+            if (result.IsConfirmed)
+            {
+                NavigationManager.NavigateTo("/imageGame/room");
+            }
+            await InvokeAsync(StateHasChanged);
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+
+    private async Task GetCurrentUserAsync()
+    {
+        var authState = await Auth.GetAuthenticationStateAsync();
+        _currentUserName = authState.User.Identity!.Name!;
+    }
+
+
+    private async Task<List<Image>?> GetImagesAsync()
+    {
+        var response = await Mediator.Send(new GetRandomImagesRequest(_roomDto!.CategoryId, (int)_roomDto!.BoardSize, _roomDto.Id));
+        return response.ImageDtos?.Select(i => new Image() { Value = i.Name }).ToList();
+    }
+
+
+    private bool IsUserBelongToRoom(string creatorUserName, string guestUserName)
+        => string.Equals(_currentUserName, creatorUserName) || string.Equals(_currentUserName, guestUserName);
+
+
+    private async Task SelectedImageProcess(int imageId)
+    {
+        await _hubConnection?.SendAsync("SendProcessImageMessageAsync", _roomDto!.CreatorId, _roomDto!.GuestId, imageId)!;
+    }
+
+
+    private bool IsMyTurn()
+        => ImageGameService.CreatorTurn is true && _currentUserName == _roomDto!.CreatorUserName || ImageGameService.CreatorTurn is false && _currentUserName == _roomDto!.GuestUserName;
+
+
+    private async Task EndGame(string title)
+    {
+        await Mediator.Send(new SetWinnerRequest(_roomDto!.Id, ImageGameService.CreatorScore, ImageGameService.GuestScore));
+
+        _timer.Stop();
+        var result = await ModalService.FireAsync(new ModalOptions() { Title = title, Text = GetStatusMessage(), ShowConfirmButton = true, ConfirmButtonText = "Go to Room→" });
+
+        StopGame();
+
+        if (result.IsConfirmed)
+        {
+            NavigationManager.NavigateTo("/imageGame/room");
+        }
+    }
+
+
+    private async Task TimeOut()
+    {
+        await EndGame("Time’s up⏱️");
+    }
+
+    private void StopGame()
+    {
+        _isGameEnded = true;
+        ImageGameService.ResetStates();
+        _timer.Stop();
+    }
+
+    private string GetStatusMessage()
+    {
+        string message = string.Empty;
+        int creatorScore = _currentUserName == _roomDto!.CreatorUserName ? ImageGameService.CreatorScore : ImageGameService.GuestScore;
+        int guestScore = _currentUserName == _roomDto!.CreatorUserName ? ImageGameService.GuestScore : ImageGameService.CreatorScore;
+
+        if (creatorScore > guestScore)
+        {
+            message = $"Congratulations, you won with {creatorScore} score('s).🎉";
+        }
+        else if (creatorScore < guestScore)
+        {
+            message = "You lost.🙁";
+        }
+        else
+        {
+            message = $"It was a close game😯. Both got {creatorScore} score('s).";
+        }
+
+        return message;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        ImageGameService.OnEndGame -= EndGame;
+        if (_isGameEnded is false)
+        {
+            await _hubConnection?.SendAsync("SendDisconnectedMessageAsync", _currentUserName == _roomDto!.CreatorUserName ? _roomDto.GuestId : _roomDto.CreatorId)!;
+        }
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

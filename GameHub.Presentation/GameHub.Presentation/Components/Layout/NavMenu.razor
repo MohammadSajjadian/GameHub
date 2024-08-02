@@ -13,12 +13,19 @@
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="categories">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Guess the words
+            <NavLink class="nav-link" href="/wordGame/categories">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Guess the Words
             </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/imageGame/room">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Guess the Images
+            </NavLink>
+        </div>
 
-            <AuthorizeView>
-                <Authorized>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
                     <form action="/logout" method="post">
                         <input type="hidden" name="ReturnUrl" value="@currentUrl" />
                         <AntiforgeryToken />
@@ -26,18 +33,22 @@
                             <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Logout
                         </button>
                     </form>
-                </Authorized>
+                </div>
+            </Authorized>
 
-                <NotAuthorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
                     <NavLink class="nav-link" href="account/register">
                         <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Register
                     </NavLink>
+                </div>
+                <div class="nav-item px-3">
                     <NavLink class="nav-link" href="account/login">
                         <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Login
                     </NavLink>
-                </NotAuthorized>
-            </AuthorizeView>
-        </div>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </nav>
 </div>
 

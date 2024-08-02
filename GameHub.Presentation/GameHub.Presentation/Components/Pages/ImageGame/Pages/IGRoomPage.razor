@@ -1,0 +1,252 @@
+﻿@page "/imageGame/room"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@attribute [Authorize]
+
+@using GameHub.Application.ImageGame.Room.Dto
+@using GameHub.Application.ImageGame.Category.Dto
+@using GameHub.Application.ImageGame.Room.Repository
+@using GameHub.Application.ImageGame.Category.Repository
+
+@inject IRoomService RoomService
+@inject ICategoryService ImageCategoryService
+@inject AuthenticationStateProvider Auth
+@inject ModalService Modal
+@inject NavigationManager NavigationManager
+
+<div class="row">
+    <div class="col-md-5">
+        <section>
+            <h3>Create Your Room</h3>
+            <hr />
+            @if (!string.IsNullOrEmpty(_message))
+            {
+                <AlertSection Status="@_status" Message="@_message" />
+            }
+            <EditForm Model="_roomDto" OnValidSubmit="OnSubmit" FormName="addRoom">
+                @if (_imageGameCategoryDtos!.Any())
+                {
+                    <InputSection Label="Category">
+                        <InputSelect @bind-Value="_roomDto.CategoryId" class="form-select">
+                            @foreach (var category in _imageGameCategoryDtos!)
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => _roomDto.CategoryId" />
+                    </InputSection>
+                }
+                else
+                {
+                    <p>There are no any categories.</p>
+                }
+                <InputSection Label="Board Size">
+                    <InputSelect @bind-Value="_roomDto.BoardSize" class="form-select">
+                        @foreach (string boardSizeName in Enum.GetNames(typeof(BoardSize)))
+                        {
+                            var boardSizeValue = (int)Enum.Parse(typeof(BoardSize), boardSizeName);
+                            <option value="@boardSizeName">@($"{boardSizeValue * 2} images")</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => _roomDto.BoardSize" />
+                </InputSection>
+                <InputSection Label="Game Time">
+                    <InputNumber @bind-Value="_roomDto.Time" class="form-control" />
+                    <ValidationMessage For="() => _roomDto.Time" />
+                </InputSection>
+
+                <div><ButtonSection Text="Create" Class="w-100 btn btn-lg btn-primary mt-3" /></div>
+                <FluentValidationValidator />
+            </EditForm>
+        </section>
+    </div>
+    <div class="col-md-6">
+        <section>
+            <h3>Active Rooms</h3>
+            <hr />
+            @if (_roomDtos!.Any())
+            {
+                <div class="overflow-auto" style="max-height: 530px;">
+                    <ul class="list-group">
+                        @foreach (var room in _roomDtos!)
+                        {
+                            if (!string.Equals(room.CreatorUserName, _currentUserName))
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        Owner: @room.CreatorUserName, Category: @room.CategoryName, Game Time: @room.Time seconds, Board Size: @room.BoardSize
+                                    </div>
+                                    <span class="badge badge-primary badge-pill">
+                                        <ButtonSection Text="Join+" Class="btn btn-sm btn-primary rounded-pill" Action="() => JoinRoom(room.Id, _currentUserName, room.CreatorConnectionId, _hubConnection?.ConnectionId)" />
+                                    </span>
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        Your room. Waiting for a player...
+                                    </div>
+                                    <span class="badge badge-primary badge-pill">
+                                        <ButtonSection Text="Delete" Class="btn btn-sm btn-danger rounded-pill" Action="() => DeleteRoom(room.Id)" />
+                                    </span>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </div>
+            }
+            else
+            {
+                <p>There are no any active rooms. Create one now.</p>
+            }
+        </section>
+    </div>
+</div>
+<ModalSection />
+
+@code {
+    private HubConnection? _hubConnection;
+    private RoomDto _roomDto = new();
+    private List<RoomDto>? _roomDtos = [];
+    private List<CategoryDto>? _imageGameCategoryDtos = [];
+    private CancellationTokenSource cts = default!;
+    private string _currentUserName = string.Empty;
+    private string _message = string.Empty;
+    private string _status = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SignalrConnectionConfig();
+        await GetCurrentUser();
+        await GetRooms();
+        await GetCategories();
+    }
+
+    private async Task SignalrConnectionConfig()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/room-hub"))
+            .Build();
+
+        _hubConnection.On<RoomDto>("ReceiveAddRoomMessage", roomDto =>
+        {
+            _roomDtos!.Insert(0, roomDto);
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<int>("ReceiveDeleteRoomMessage", roomId =>
+        {
+            var room = _roomDtos?.FirstOrDefault(r => r.Id == roomId);
+            _roomDtos?.Remove(room!);
+            InvokeAsync(StateHasChanged);
+        });
+
+        _hubConnection.On<int>("ReceiveGoToRoomMessage", roomId =>
+        {
+            NavigationManager.NavigateTo($"/imageGame/{roomId}");
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    private async Task GetCurrentUser()
+    {
+        var authState = await Auth.GetAuthenticationStateAsync();
+        _currentUserName = authState.User.Identity!.Name!;
+    }
+
+    private async Task GetRooms()
+    {
+        cts = new();
+        var response = await RoomService.GetAllAsync(cts.Token);
+        _roomDtos = response;
+    }
+
+    private async Task GetCategories()
+    {
+        cts = new();
+        var response = await ImageCategoryService.GetAllAsync(cts.Token);
+        _imageGameCategoryDtos = response;
+    }
+
+    private async Task OnSubmit()
+    {
+        var result = await Modal.FireAsync(new ModalOptions { Text = "Are you sure?", ShowConfirmButton = true, ShowDenyButton = true });
+
+        if (result.IsConfirmed)
+        {
+            _roomDto.CreatorUserName = _currentUserName;
+            _roomDto.CreatorConnectionId = _hubConnection?.ConnectionId!;
+            cts = new();
+            int response = await RoomService.CreateAsync(_roomDto, cts.Token);
+
+            if (response > 0)
+            {
+                _roomDto.Id = response;
+                await _hubConnection?.SendAsync("AddRoomAsync", _roomDto)!;
+                _roomDto = new();
+                _status = "success";
+                _message = "Room created successfully.";
+            }
+            else if (response == 0)
+            {
+                _status = "danger";
+                _message = "You already have a room. You should delete it to create a new one.";
+            }
+            else
+            {
+                _status = "danger";
+                _message = "Failed to add room";
+            }
+        }
+    }
+
+    private async Task DeleteRoom(int roomId)
+    {
+        var result = await Modal.FireAsync(new ModalOptions { Text = "Are you sure you want to delete that room?", ShowConfirmButton = true, ShowDenyButton = true });
+        if (result.IsConfirmed)
+        {
+            cts = new();
+            int response = await RoomService.DeleteAsync(roomId, cts.Token);
+            if (response != 0)
+            {
+                await _hubConnection?.SendAsync("DeleteRoomAsync", roomId)!;
+                _status = "success";
+                _message = "Room deleted successfully.";
+            }
+            else
+            {
+                _status = "danger";
+                _message = "Failed to delete the room.";
+            }
+        }
+    }
+
+    private async Task JoinRoom(int roomId, string guestUserName, string? creatorConnectionId, string? guestConnectionId)
+    {
+        cts = new();
+        int response = await RoomService.AddGuestToRoom(roomId, guestUserName, cts.Token);
+        if (response > 0)
+        {
+            await _hubConnection?.SendAsync("ManageGroupAsync", creatorConnectionId, guestConnectionId)!;
+            await _hubConnection?.SendAsync("DeleteRoomAsync", roomId)!;
+            await _hubConnection?.SendAsync("GoToRoomAsync", roomId)!;
+        }
+        else
+        {
+            _status = "danger";
+            _message = "Can't join this room.";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            cts = new();
+            await RoomService.DeleteCurrentUserRoomsAsync(_currentUserName);
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

@@ -93,7 +93,7 @@ namespace GameHub.Infra.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("GameHub.Domain.Entities.Category", b =>
+            modelBuilder.Entity("GameHub.Domain.Entities.ImageGame.Category", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -107,10 +107,94 @@ namespace GameHub.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Categories");
+                    b.ToTable("ImageGameCategories");
                 });
 
-            modelBuilder.Entity("GameHub.Domain.Entities.WordGame.WordGameLevel", b =>
+            modelBuilder.Entity("GameHub.Domain.Entities.ImageGame.Image", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.ToTable("ImageGameImages");
+                });
+
+            modelBuilder.Entity("GameHub.Domain.Entities.ImageGame.Room", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BoardSize")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ConnectionId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CreatorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("CreatorScore")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("GuestScore")
+                        .HasColumnType("int");
+
+                    b.Property<string>("GuestUserName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Time")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("CreatorId");
+
+                    b.ToTable("ImageGameRooms");
+                });
+
+            modelBuilder.Entity("GameHub.Domain.Entities.WordGame.Category", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WordGameCategories");
+                });
+
+            modelBuilder.Entity("GameHub.Domain.Entities.WordGame.Level", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -275,10 +359,40 @@ namespace GameHub.Infra.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("GameHub.Domain.Entities.WordGame.WordGameLevel", b =>
+            modelBuilder.Entity("GameHub.Domain.Entities.ImageGame.Image", b =>
                 {
-                    b.HasOne("GameHub.Domain.Entities.Category", "Category")
-                        .WithMany("WordGameLevels")
+                    b.HasOne("GameHub.Domain.Entities.ImageGame.Category", "Category")
+                        .WithMany("Images")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("GameHub.Domain.Entities.ImageGame.Room", b =>
+                {
+                    b.HasOne("GameHub.Domain.Entities.ImageGame.Category", "Category")
+                        .WithMany("Rooms")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GameHub.Domain.Entities.ApplicationUser", "ApplicationUser")
+                        .WithMany()
+                        .HasForeignKey("CreatorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApplicationUser");
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("GameHub.Domain.Entities.WordGame.Level", b =>
+                {
+                    b.HasOne("GameHub.Domain.Entities.WordGame.Category", "Category")
+                        .WithMany("Levels")
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -337,9 +451,16 @@ namespace GameHub.Infra.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("GameHub.Domain.Entities.Category", b =>
+            modelBuilder.Entity("GameHub.Domain.Entities.ImageGame.Category", b =>
                 {
-                    b.Navigation("WordGameLevels");
+                    b.Navigation("Images");
+
+                    b.Navigation("Rooms");
+                });
+
+            modelBuilder.Entity("GameHub.Domain.Entities.WordGame.Category", b =>
+                {
+                    b.Navigation("Levels");
                 });
 #pragma warning restore 612, 618
         }

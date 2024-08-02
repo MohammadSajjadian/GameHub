@@ -1,0 +1,60 @@
+﻿@page "/wordGame/add-category"
+@rendermode @(new InteractiveWebAssemblyRenderMode(false))
+@attribute [Authorize(Roles = "Admin")]
+
+@using GameHub.Application.WordGame.Category.Dto
+@using GameHub.Application.WordGame.Category.Command.Requests
+
+@inject IMediator Mediator
+@inject ModalService ModalService
+
+<PageTitle>Add new category</PageTitle>
+
+<h3>Add new category</h3>
+@if (!string.IsNullOrEmpty(message))
+{
+    <AlertSection Status="@status" Message="@message" />
+}
+<div>
+    <EditForm Model="CategoryDto" OnValidSubmit="OnSubmit" FormName="addCategory">
+        <InputSection Label="Name">
+            <InputText @bind-Value="CategoryDto.Name" class="form-control" />
+            <ValidationMessage For="() => CategoryDto.Name" />
+        </InputSection>
+
+        <ButtonSection Text="Add" Class="mt-4 btn btn-outline-success" />
+        <FluentValidationValidator />
+    </EditForm>
+</div>
+<ModalSection />
+
+@code {
+    [SupplyParameterFromForm]
+    private CategoryDto CategoryDto { get; set; } = new();
+
+    private string message = string.Empty;
+    private string status = string.Empty;
+
+
+    private async void OnSubmit()
+    {
+        var result = await ModalService.FireAsync(new ModalOptions { Text = "Are you sure?", ShowConfirmButton = true, ShowDenyButton = true });
+
+        if (result.IsConfirmed)
+        {
+            var response = await Mediator.Send(new AddCategoryRequest(CategoryDto));
+
+            if (response.StatusCode == 200)
+            {
+                CategoryDto = new();
+                status = "success";
+            }
+            else
+            {
+                status = "danger";
+            }
+            message = response.Message!;
+            StateHasChanged();
+        }
+    }
+}

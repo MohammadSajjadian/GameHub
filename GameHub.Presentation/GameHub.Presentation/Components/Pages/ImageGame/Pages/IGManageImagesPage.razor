@@ -1,0 +1,87 @@
+﻿@page "/imageGame/manage-images"
+@rendermode InteractiveServer
+@attribute [StreamRendering]
+@attribute [Authorize(Roles = "Admin")]
+
+@using GameHub.Application.ImageGame.Image.Dto
+@using GameHub.Application.ImageGame.Image.Repository
+
+@inject IImageService ImageeService
+@inject ModalService ModalService
+
+<PageTitle>Manage Images</PageTitle>
+
+<h3>Manage Images</h3>
+@if (!string.IsNullOrEmpty(_message))
+{
+    <AlertSection Status="@_status" Message="@_message" />
+}
+<div class="container mt-4">
+    @if (_tempImageDtos!.Any())
+    {
+        <div class="table-responsive">
+            <QuickGrid Items="_imageDtos" Class="table table-striped table-bordered table-hover" Pagination="_pagination">
+                <PropertyColumn Title="Id" Property="@(i => i.Id)" Sortable="true" />
+                <PropertyColumn Title="Category" Property="@(i => i.CategoryDto.Name)" Sortable="true" />
+                <TemplateColumn Title="Image">
+                    <img width="100" height="100" src="/Images/@context.Name" />
+                </TemplateColumn>
+                <TemplateColumn Title="Actions">
+                    <ButtonSection Text="Remove" Action="() => DeleteImage(context.Id)" Class="btn btn-outline-danger" />
+                </TemplateColumn>
+            </QuickGrid>
+        </div>
+        <Paginator State="_pagination" />
+    }
+    else
+    {
+        <h3>There is no image to show</h3>
+    }
+</div>
+<ModalSection />
+
+@code {
+    private IQueryable<ImageDto>? _imageDtos;
+    private List<ImageDto>? _tempImageDtos = [];
+    private PaginationState _pagination = new() { ItemsPerPage = 10 };
+    private string _message = string.Empty;
+    private string _status = string.Empty;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        CancellationTokenSource cts = new();
+        var response = await ImageeService.GetAllAsync(cts.Token);
+
+        _imageDtos = response?.AsQueryable();
+        _tempImageDtos = response?.Select(c => new ImageDto
+        {
+            Id = c.Id,
+            Name = c.Name,
+            CategoryDto = c.CategoryDto
+        }).ToList();
+    }
+
+    private async void DeleteImage(int imageId, CancellationToken cancellationToken = default)
+    {
+        var result = await ModalService.FireAsync(new ModalOptions { Text = "Are you sure you want to delete the image?", ShowConfirmButton = true, ShowDenyButton = true });
+        if (result.IsConfirmed)
+        {
+            int deletedItem = await ImageeService.DeleteAsync(imageId, cancellationToken);
+            if (deletedItem == 0)
+            {
+                _message = "Failed to delete image";
+                _status = "danger";
+                return;
+            }
+            _message = "Image deleted successfully";
+            _status = "success";
+            DeleteImageFromTable(imageId);
+            StateHasChanged();
+        }
+    }
+
+
+    private void DeleteImageFromTable(int id)
+        => _imageDtos = _imageDtos?.Where(c => c.Id != id);
+}

@@ -1,0 +1,129 @@
+﻿@page "/imageGame/add-image"
+@rendermode @(new InteractiveWebAssemblyRenderMode(false))
+@attribute [Authorize(Roles = "Admin")]
+
+@using GameHub.Application.ImageGame.Image.Dto
+@using GameHub.Application.ImageGame.Category.Dto
+@using GameHub.Application.ImageGame.Category.Queries.Requests
+@using GameHub.Application.ImageGame.Image.Commands.Requests
+
+@inject IMediator Mediator
+@inject ModalService Modal
+
+<PageTitle>Add Image</PageTitle>
+
+<h3>Add Image</h3>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <AlertSection Status="@_status" Message="@_message" />
+}
+<div>
+    <EditForm Model="_imageDto" OnValidSubmit="OnSubmit" FormName="AddImage">
+        <InputSection Label="Category">
+            @if (_categoryDtos!.Any())
+            {
+                <InputSelect @bind-Value="_imageDto.CategoryDto.Id" class="form-select">
+                    @foreach (var category in _categoryDtos!)
+                    {
+                        <option value="@category.Id">@category.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => _imageDto.CategoryDto.Id" />
+            }
+            else
+            {
+                <p>There are no any categories.</p>
+            }
+        </InputSection>
+        <InputSection Label="Image">
+            <InputFile OnChange="LoadImage" class="form-control" accept=".png,.jpg,.jpeg" />
+        </InputSection>
+        <FluentValidationValidator />
+
+        <ButtonSection Text="Add" Class="btn btn-primary mt-3" />
+    </EditForm>
+</div>
+<ModalSection />
+
+@code {
+    private ImageDto _imageDto = new();
+    private List<CategoryDto>? _categoryDtos = [];
+    private IBrowserFile? _file;
+    private string _message = string.Empty;
+    private string _status = string.Empty;
+    private const long _maxSize = 1024 * 1024 * 2;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCategories();
+    }
+
+    private async Task GetCategories()
+    {
+        var response = await Mediator.Send(new GetCategoriesRequest());
+        _categoryDtos = response.CategoryDtos;
+    }
+
+    public async Task OnSubmit()
+    {
+        var result = await Modal.FireAsync(new ModalOptions { Text = "Are you sure?", ShowConfirmButton = true, ShowDenyButton = true });
+        if (result.IsConfirmed)
+        {
+            if (_file is null)
+            {
+                _message = "Image must not be empty.";
+                _status = "warning";
+                return;
+            }
+            var addResponse = await Mediator.Send(new AddImageRequest(_imageDto));
+            if (addResponse.StatusCode != 200)
+            {
+                _message = addResponse.Message!;
+                _status = "danger";
+                return;
+            }
+            var uploadResponse = await Mediator.Send(new UploadImageRequest(addResponse.ImageId, _file));
+            if (uploadResponse.StatusCode != 200)
+            {
+                _status = "danger";
+                return;
+            }
+            _imageDto = new();
+            _file = null;
+            _message = uploadResponse.Message!;
+            _status = "success";
+            StateHasChanged();
+        }
+    }
+
+    private void LoadImage(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        var result = IsImageValid(file);
+        if (!result.Item1)
+        {
+            _message = result.Item2!;
+            _status = "warning";
+            return;
+        }
+        _file = e.File;
+    }
+
+    private (bool, string?) IsImageValid(IBrowserFile file)
+    {
+        if (string.IsNullOrEmpty(file.Name))
+        {
+            return (false, "'Image Name' must not be empty.");
+        }
+        if (file.Size > _maxSize)
+        {
+            return (false, "'Image Size' must be less that 2 MB.");
+        }
+        if (!(file.ContentType.Equals("image/jpeg") || file.ContentType.Equals("image/jpg") || file.ContentType.Equals("image/png")))
+        {
+            return (false, "Supported image types are '.jpeg, .jpg, .png'");
+        }
+        return (true, null);
+    }
+}

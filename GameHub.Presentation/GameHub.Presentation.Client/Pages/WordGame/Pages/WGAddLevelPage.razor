@@ -1,0 +1,107 @@
+﻿@page "/wordGame/add-level"
+@rendermode @(new InteractiveWebAssemblyRenderMode(false))
+@attribute [Authorize(Roles = "Admin")]
+
+@using GameHub.Application.WordGame.Level.Dto
+@using GameHub.Application.WordGame.Category.Dto
+@using GameHub.Application.WordGame.Category.Queries.Requests
+@using GameHub.Application.WordGame.Level.Commands.Requests
+
+@inject IMediator Mediator
+@inject ModalService ModalService
+
+<PageTitle>Add new level</PageTitle>
+
+<h3>Add new level</h3>
+@if (!string.IsNullOrEmpty(message))
+{
+    <AlertSection Status="@status" Message="@message" />
+}
+<div>
+    <EditForm Model="LevelDto" OnValidSubmit="OnSubmit" FormName="addLevel">
+        @if (categoryDtos!.Any())
+        {
+            <InputSection Label="Category">
+                <InputSelect @bind-Value="LevelDto.CategoryDto.Id" class="form-select">
+                    @foreach (var category in categoryDtos!)
+                    {
+                        <option value="@category.Id">@category.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => LevelDto.CategoryDto.Id" />
+            </InputSection>
+        }
+        else
+        {
+            <p>You should have at least one category. Add it from <a href="/add-category">here</a>.</p>
+            <ValidationMessage For="() => LevelDto.CategoryDto.Id" />
+        }
+
+        <InputSection Label="Level Number">
+            <InputNumber @bind-Value="LevelDto.LevelNumber" class="form-control" />
+            <ValidationMessage For="() => LevelDto.LevelNumber" />
+        </InputSection>
+
+        <InputSection Label="Word">
+            <InputText @bind-Value="LevelDto.Word" class="form-control" />
+            <ValidationMessage For="() => LevelDto.Word" />
+        </InputSection>
+
+        <InputSection Label="Hint">
+            <InputText @bind-Value="LevelDto.Hint" class="form-control" />
+            <ValidationMessage For="() => LevelDto.Hint" />
+        </InputSection>
+
+        <InputSection Label="Difficulty">
+            <InputSelect @bind-Value="LevelDto.LevelStatus" class="form-select">
+                @foreach (var status in Enum.GetNames(typeof(LevelStatus)))
+                {
+                    <option value="@status">@status</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="() => LevelDto.LevelStatus" />
+        </InputSection>
+
+        <ButtonSection Text="Add" Class="mt-4 btn btn-outline-success" />
+        <FluentValidationValidator />
+    </EditForm>
+</div>
+<ModalSection />
+
+@code {
+    [SupplyParameterFromForm]
+    private LevelDto LevelDto { get; set; } = new();
+    private List<CategoryDto>? categoryDtos { get; set; } = [];
+
+    private string message = string.Empty;
+    private string status = string.Empty;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Mediator.Send(new GetCategoriesRequest());
+        categoryDtos = response.CategoryDtos;
+    }
+
+    private async void OnSubmit()
+    {
+        var result = await ModalService.FireAsync(new ModalOptions { Text = "Are you sure?", ShowConfirmButton = true, ShowDenyButton = true });
+
+        if (result.IsConfirmed)
+        {
+            var response = await Mediator.Send(new AddLevelRequest(LevelDto));
+
+            if (response.StatusCode == 200)
+            {
+                LevelDto = new();
+                status = "success";
+            }
+            else
+            {
+                status = "danger";
+            }
+            message = response.Message!;
+            StateHasChanged();
+        }
+    }
+}

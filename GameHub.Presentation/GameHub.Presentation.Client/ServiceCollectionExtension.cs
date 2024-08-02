@@ -1,5 +1,6 @@
 ﻿using Blazored.LocalStorage;
 using GameHub.Presentation.Client.Services;
+using GameHub.Presentation.Client.Services.ImageGame;
 using GameHub.Presentation.Client.Services.WordGame;
 
 namespace GameHub.Presentation.Client;
@@ -16,6 +17,7 @@ public static class ServiceCollectionExtension
         services.AddScoped<ModalService>();
         services.AddScoped<WordService>();
         services.AddScoped<HealthService>();
+        services.AddScoped<ImageGameService>();
 
         return services;
     }
