@@ -53,8 +53,8 @@ The Type Speed Test is an interactive game that challenges the player's typing s
 - A timer starts on the first keystroke, and the player must type each character correctly.
   
 **Game End:**
--The game ends when the player completes typing the entire text.
--A modal will appear, showing the player's performance, including the number of mistakes (wrong peaks) and the total time taken to complete the text.
+- The game ends when the player completes typing the entire text.
+- A modal will appear, showing the player's performance, including the number of mistakes (wrong peaks) and the total time taken to complete the text.
   
 **Technologies Used:**
 - .NET 8 Blazor
