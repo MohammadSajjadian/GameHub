@@ -1,0 +1,19 @@
+﻿@using System.Reflection
+
+<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="assemblies">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>
+
+@code{
+    Assembly[] assemblies = new[]
+    {
+        typeof(Client._Imports).Assembly,
+        typeof(WordGame.Presentation._Imports).Assembly,
+        typeof(User.Presentation._Imports).Assembly,
+        typeof(ImageGame.Presentation._Imports).Assembly,
+        typeof(TypeGame.Presentation._Imports).Assembly,
+    };
+}

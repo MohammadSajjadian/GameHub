@@ -1,0 +1,87 @@
+﻿/* ========== Correct Effect Styles ========== */
+.correct-effect {
+    animation: correctAnimation 0.3s ease-in-out;
+    color: #1ec0e7; /* Blue color */
+}
+
+@keyframes correctAnimation {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* ========== Wrong Effect Styles ========== */
+.wrong-effect {
+    animation: shakeEffect 0.3s ease-in-out, wrong-blink 1s step-end infinite;
+    background-color: #fff6f6; /* Light red background */
+    color: #e7246b; /* Red color */
+}
+
+@keyframes shakeEffect {
+    0%, 100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(-10deg);
+    }
+
+    75% {
+        transform: rotate(10deg);
+    }
+}
+
+@keyframes wrong-blink {
+    from, to {
+        border-color: transparent;
+    }
+
+    50% {
+        border-color: #e7246b; /* Red underline color */
+    }
+}
+
+/* ========== Current Position Effect Styles ========== */
+.current-position-effect {
+    border-bottom: 4px solid #03a9f4; /* Blue underline */
+    animation: blink 1s step-end infinite;
+    background-color: #e8f8ff; /* Light blue background */
+    color: #03a9f4; /* Blue color */
+}
+
+/* Combines current position and wrong effects */
+.current-position-wrong-effect {
+    border-bottom: 4px solid #e7246b; /* Red underline */
+    animation: shakeEffect 0.3s ease-in-out, wrong-blink 1s step-end infinite;
+    background-color: #fff6f6; /* Light red background */
+    color: #e7246b; /* Red text */
+}
+
+@keyframes blink {
+    from, to {
+        border-color: transparent;
+    }
+
+    50% {
+        border-color: #03a9f4; /* Blue underline color */
+    }
+}
+
+/* ========== Other Utility Styles ========== */
+.large-text {
+    font-size: 32px; /* Adjust the size as needed */
+    margin-right: 5px;
+    letter-spacing: 0.1em;
+}
+
+.pre-wrap-text {
+    white-space: pre-wrap;
+}

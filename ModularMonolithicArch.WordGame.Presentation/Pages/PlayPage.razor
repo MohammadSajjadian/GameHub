@@ -1,0 +1,200 @@
+﻿@page "/wordGame/level/{LevelId:int}/{CategoryName}/{CategoryId:int}"
+@rendermode @(new InteractiveAutoRenderMode(false))
+
+@inject IMediator Mediator
+@inject ILocalStorageService LocalStorage
+@inject IWordGameService WordGameService
+@inject IWordService WordService
+@inject AuthenticationStateProvider Auth
+@inject NavigationManager NavManager
+@inject ModalService ModalService
+
+<PageTitle>Guess the Word</PageTitle>
+<div class="d-flex justify-content-between">
+    <h3>Guess the word</h3>
+    <HealthSection @ref="_health" />
+</div>
+<CountDownSection @ref="_timer" TimerOut="TimeOut" />
+@if (!string.IsNullOrEmpty(_word.Value))
+{
+    <div class="container" style="position: relative; top: 14rem;">
+        <div class="row justify-content-center">
+            @{ int wordCount = _word.Letters.Count;}
+            @foreach (var letter in _word.Letters)
+            {
+                var letterData = letter;
+                <LetterSection Letter="letterData" CheckAnswer="CheckAnswer" IsGuideActive="WordGameService.IsGuideActive" />
+            }
+        </div>
+        <HintSection Text="@WordGameService.Hint" />
+    </div>
+    <ModalSection />
+}
+else
+{
+    <p>@_message</p>
+}
+
+@code {
+    private Word _word = new();
+    private CountDownSection _timer = default!;
+    private HealthSection _health = default!;
+    private string? _userName;
+    private string? _message;
+    private int _percentageOfCharsToHide;
+    private int _remainingTime;
+    private bool _isGameEnded;
+    private bool? _isAuthenticated;
+
+    private string LevelsRoute => $"/wordGame/levels/{CategoryName}/{CategoryId}";
+    [Parameter, EditorRequired] public int LevelId { get; set; }
+    [Parameter, EditorRequired] public int CategoryId { get; set; }
+    [Parameter, EditorRequired] public string CategoryName { get; set; } = default!;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Mediator.Send(new GetLevelRequest(LevelId));
+        if (response.StatusCode == 404)
+        {
+            _message = response.Message;
+            return;
+        }
+
+        var authState = await ConfigAuthAsync();
+        if (_isAuthenticated is true)
+        {
+            _userName = authState.User.Identity?.Name;
+            int profileHealth = await _health.GetProfileHealthAsync(_userName!);
+            if (profileHealth == 0)
+            {
+                _message = "You need more health.";
+                return;
+            }
+        }
+        else
+        {
+            int? localHealth = await _health.GetLocalHealthAsync();
+            if (localHealth.HasValue && localHealth.Value == 0)
+            {
+                _message = "You need to log in to continue.";
+                return;
+            }
+        }
+        _word.Value = response.LevelDto!.Word;
+        _percentageOfCharsToHide = (int)response.LevelDto!.LevelStatus;
+        SetRemainingTime(response.LevelDto!.LevelStatus);
+        _timer.Start(_remainingTime);
+
+        WordGameService.Initialize(_word, response.LevelDto.Hint, _percentageOfCharsToHide);
+    }
+
+    private async Task<AuthenticationState> ConfigAuthAsync()
+    {
+        var authState = await Auth.GetAuthenticationStateAsync();
+        _isAuthenticated = authState.User.Identity?.IsAuthenticated;
+
+        return authState;
+    }
+
+    private void SetRemainingTime(LevelStatus levelStatus)
+    {
+        _remainingTime = levelStatus switch
+        {
+            LevelStatus.Easy => 30,
+            LevelStatus.Medium => 40,
+            LevelStatus.Hard => 60,
+            _ => 0,
+        };
+    }
+
+    private async Task CheckAnswer()
+    {
+        if (IsInputsValid())
+        {
+            int? localHealth = await LocalStorage.GetItemAsync<int?>("Health");
+            if (localHealth is not null && localHealth > _health.MaxLocalHealth || localHealth < 0)
+            {
+                await _health.PreventChangeLocalHealthAsync();
+            }
+            if (WordGameService!.IsAnswerCorrect())
+            {
+                _timer.Stop();
+                await ModalService.FireAsync(new ModalOptions { Text = "Thats correct", ShowConfirmButton = true, ConfirmButtonText = "Go to the next one →" });
+
+                var response = await Mediator.Send(new GetNextLevelRequest(LevelId, CategoryId));
+
+                if (response.StatusCode == 404)
+                {
+                    await ModalService.FireAsync(new ModalOptions { Title = "Congratulations🎉", Text = "You passed all levels🥳", ShowConfirmButton = true, ConfirmButtonText = "Go to the home →" });
+                    NavManager.NavigateTo(LevelsRoute);
+                    return;
+                }
+
+                NavManager.NavigateTo($"/wordGame/level/{response!.LevelDto!.Id}/{CategoryName}/{CategoryId}");
+                WordGameService.Initialize(_word, response.LevelDto.Hint, _remainingTime);
+            }
+            else
+            {
+                var modalOptions = new ModalOptions { Text = "You Lost🙁", ShowDenyButton = true, DenyButtonText = "Try again", ShowConfirmButton = false, AllowOutsideClick = false };
+
+                AddConfirmButton(modalOptions);
+                await StopGame(modalOptions);
+            }
+        }
+    }
+
+    private void AddConfirmButton(ModalOptions modalOptions)
+    {
+        if (!WordGameService!.IsGuideActive)
+        {
+            modalOptions.Text = "Want some help?💡";
+            modalOptions.ShowConfirmButton = true;
+            modalOptions.ConfirmButtonText = "Yes";
+        }
+    }
+
+    private bool IsInputsValid()
+    => !WordService.IsEmptyLetterExist(_word) && !_isGameEnded;
+
+    private async Task StopGame(ModalOptions options)
+    {
+        _timer.Stop();
+        _isGameEnded = true;
+        if (_isAuthenticated is true && _health.Value > 0)
+        {
+            await _health.ReduceFromProfileAsync(_userName!);
+        }
+        else
+        {
+            await _health.ReduceFromLocalAsync();
+        }
+        if (_health.Value > 0)
+        {
+            var result = await ModalService.FireAsync(options);
+
+            _timer.Start(_remainingTime);
+            if (result.IsConfirmed)
+            {
+                await ModalService.FireAsync(new ModalOptions { Text = "From now, Every letter you choose correctly will turn green", ShowConfirmButton = true, ConfirmButtonText = "ok" });
+                WordGameService!.EnableGuide();
+            }
+        }
+        else
+        {
+            var result = await ModalService.FireAsync(new ModalOptions { Title = "You ran out of chance💔", Text = "You will gain one health point every 30 seconds", ShowConfirmButton = true, ConfirmButtonText = "Go to Home", AllowOutsideClick = false });
+            NavManager.NavigateTo(LevelsRoute);
+        }
+
+        WordService!.ClearLettersAtRandomIndices(_word, WordGameService.RandomIndices);
+        _isGameEnded = false;
+    }
+
+    private async Task TimeOut()
+    {
+        var modalOptions = new ModalOptions { Title = "Time is over⏱️", Text = "You ran out of time", ShowDenyButton = true, DenyButtonText = "Try again", ShowConfirmButton = false, AllowOutsideClick = false };
+
+        AddConfirmButton(modalOptions);
+        await StopGame(modalOptions);
+    }
+}

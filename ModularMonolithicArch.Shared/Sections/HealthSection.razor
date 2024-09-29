@@ -1,0 +1,59 @@
+﻿@inject ILocalStorageService LocalStorageService
+@inject IMediator Mediator
+
+<div class="d-flex justify-content-between">
+    <span class="pe-5 fs-3 align-self-end">❤️: @Value</span>
+</div>
+
+@code {
+    public int Value { get; private set; }
+    public int MaxLocalHealth => 3;
+
+    public async Task<int> GetProfileHealthAsync(string userName)
+    {
+        await LocalStorageService.RemoveItemAsync("Health");
+        var response = await Mediator.Send(new GetUserHealthRequest(userName));
+        Value = response.Health;
+        StateHasChanged();
+
+        return response.Health;
+    }
+
+    public async Task<int?> GetLocalHealthAsync()
+    {
+        int? localHealth = await LocalStorageService.GetItemAsync<int?>("Health");
+        if (localHealth is null)
+        {
+            Value = MaxLocalHealth;
+            await LocalStorageService.SetItemAsync("Health", Value);
+        }
+        if (localHealth.HasValue && localHealth.Value != 0)
+        {
+            Value = localHealth.Value;
+        }
+        StateHasChanged();
+
+        return localHealth;
+    }
+
+    public async Task PreventChangeLocalHealthAsync()
+    {
+        Value = MaxLocalHealth;
+        StateHasChanged();
+        await LocalStorageService.SetItemAsync("Health", 2);
+    }
+
+    public async Task ReduceFromProfileAsync(string userName)
+    {
+        Value--;
+        StateHasChanged();
+        await Mediator.Send(new DecreaseUserHealthRequest(userName!));
+    }
+
+    public async Task ReduceFromLocalAsync()
+    {
+        Value--;
+        StateHasChanged();
+        await LocalStorageService.SetItemAsync("Health", Value);
+    }
+}

@@ -1,0 +1,117 @@
+﻿@rendermode InteractiveWebAssembly
+
+@inject NavigationManager NavigationManager
+@inject ModalService ModalService
+
+@page "/typeGame"
+
+<PageTitle>Type speed Test</PageTitle>
+<h3>Type speed Test</h3>
+
+<StopWatchSection @ref="_stopWatchSection" />
+<div @ref="_testRef" tabindex="0" @onkeydown="OnInputKey" class="container">
+    <div class="row mt-5">
+        <div class="col-12 d-flex flex-wrap justify-content-start align-items-start">
+            @foreach (var letter in _letters)
+            {
+                <p class="@(ControlCorrectness(letter)) @(PlaceUnderline(letter)) large-text pre-wrap-text">
+                    @letter.Value
+                </p>
+            }
+        </div>
+    </div>
+</div>
+<ModalSection />
+
+@code {
+    private ElementReference _testRef;
+    private string _text = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s.";
+    private List<Letter> _letters = [];
+    private StopWatchSection _stopWatchSection = new();
+    private int _currentPosition = 0;
+    private int _wrongPeak = 0;
+    private bool _isTimerStarted = false;
+
+    private int TextLength => _text.Length - 1;
+
+    protected override void OnInitialized()
+    {
+        _letters = _text.Select(t => new Letter { Value = t.ToString(), IsCorrect = null }).ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await _testRef.FocusAsync();
+        }
+    }
+
+    private async Task OnInputKey(KeyboardEventArgs args)
+    {
+        if (args.Key.Equals("Shift"))
+        {
+            return;
+        }
+
+        if (IsPositionReachTheEnd())
+        {
+            return;
+        }
+
+        if (!_isTimerStarted)
+        {
+            _stopWatchSection.Start();
+            _isTimerStarted = true;
+        }
+
+        await CheckForAnswer(args.Key);
+    }
+
+    private async Task CheckForAnswer(string key)
+    {
+        if (!_text[_currentPosition].ToString().Equals(key))
+        {
+            _letters[_currentPosition].IsCorrect = false;
+            _wrongPeak++;
+            return;
+        }
+
+        if (_letters[_currentPosition].IsCorrect is false)
+        {
+            _currentPosition++;
+            return;
+        }
+
+        _letters[_currentPosition].IsCorrect = true;
+        _currentPosition++;
+
+        if (IsPositionReachTheEnd())
+        {
+            _stopWatchSection.Stop();
+            var result = await ModalService.FireAsync(new ModalOptions { Title = "Let’s see what you have done.🤔",
+                Text = $"Wrong peaks: {_wrongPeak}, Total time: {_stopWatchSection._time} seconds", ShowConfirmButton = true, ConfirmButtonText = "Go Home→" });
+
+            if (result.IsConfirmed)
+            {
+                NavigationManager.NavigateTo("/");
+            }
+        }
+    }
+
+    private string ControlCorrectness(Letter letter)
+        => letter.IsCorrect == true ? "correct-effect" : letter.IsCorrect == false ? "wrong-effect" : "";
+
+    private string PlaceUnderline(Letter letter)
+        => _letters.IndexOf(letter) == _currentPosition && letter.IsCorrect == false ? "current-position-wrong-effect"
+           : _letters.IndexOf(letter) == _currentPosition ? "current-position-effect" : "";
+
+    private bool IsPositionReachTheEnd()
+    => _currentPosition > _text.Length - 1;
+
+    private class Letter
+    {
+        public string Value { get; set; } = string.Empty;
+        public bool? IsCorrect { get; set; } = null;
+    }
+}

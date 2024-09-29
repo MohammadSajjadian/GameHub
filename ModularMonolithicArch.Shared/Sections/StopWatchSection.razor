@@ -1,0 +1,46 @@
+﻿@implements IDisposable
+@using System.Timers
+
+<div class="clock">
+    <h1>@Time</h1>
+</div>
+
+@code {
+    private Timer? _timer = null;
+    public int _time = 0;
+
+    protected string Time { get; set; } = "00:00";
+
+    public void Start()
+    {
+        _timer?.Start();
+    }
+
+    public void Stop()
+    {
+        _timer?.Stop();
+    }
+
+    protected override void OnInitialized()
+    {
+        _timer = new Timer(1000);
+        _timer.Elapsed += async (sender, e) => await OnTimedEvent(sender, e);
+        _timer.AutoReset = true;
+    }
+
+    private async Task OnTimedEvent(object? sender, ElapsedEventArgs e)
+    {
+        _time++;
+
+        await InvokeAsync(() =>
+        {
+            Time = TimeSpan.FromSeconds(_time).ToString(@"mm\:ss");
+            StateHasChanged();
+        });
+    }
+
+    void IDisposable.Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

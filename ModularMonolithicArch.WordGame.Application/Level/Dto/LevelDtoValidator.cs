@@ -1,0 +1,24 @@
+﻿using FluentValidation;
+
+namespace ModularMonolithicArch.WordGame.Application.Level.Dto;
+
+public class LevelDtoValidator : AbstractValidator<LevelDto>
+{
+    public LevelDtoValidator()
+    {
+        RuleFor(x => x.LevelNumber)
+            .NotNull()
+            .GreaterThan(0);
+
+        RuleFor(x => x.Word)
+            .NotEmpty()
+            .Matches(@"^[a-zA-Z]*$").WithMessage("Word should only include alphabetic charecters (no numbers or special characters)");
+
+        RuleFor(x => x.Hint).NotEmpty();
+
+        RuleFor(x => x.CategoryDto.Id).NotEmpty().WithMessage("'Category' must not be empty.");
+
+        RuleFor(x => x.LevelStatus)
+            .NotEmpty().WithMessage("'Difficulty' must not be empty.");
+    }
+}

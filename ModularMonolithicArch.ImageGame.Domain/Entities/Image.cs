@@ -1,0 +1,15 @@
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace ModularMonolithicArch.ImageGame.Domain.Entities;
+
+public class Image
+{
+    public int Id { get; set; }
+    public string? Name { get; set; }
+    [NotMapped]
+    public bool IsVisible { get; set; }
+
+    public int CategoryId { get; set; }
+    [ForeignKey(nameof(CategoryId))]
+    public Category Category { get; set; } = default!;
+}
