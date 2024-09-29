@@ -1,21 +1,22 @@
-﻿namespace GameHub.Presentation.Client.Services.ImageGame;
+﻿using GameHub.Domain.Entities.ImageGame;
+using GameHub.Domain.Repository.ImageGame;
 
-public class ImageGameService
+namespace GameHub.Domain.Services.ImageGame;
+
+public class ImageGameService(IImageService imageService) : IImageGameService
 {
     private List<Image> _selectedItems = [];
     private const int _maxSelectedItem = 2;
-    private int _winnerId;
     private int _creatorScore;
     private int _guestScore;
     private bool _creatorTurn = true;
-    public bool _isCreatorPageLoaded = false;
-    public bool _isGuestPageLoaded = false;
+
+    public event EventHandler<EndGameEventArgs> OnEndGame = default!;
 
     public bool CreatorTurn => _creatorTurn;
     public int CreatorScore => _creatorScore;
     public int GuestScore => _guestScore;
     public List<Image> Images { get; set; } = [];
-    public Func<string, Task>? OnEndGame;
 
     public void Initialize(List<Image> images, int seed)
     {
@@ -40,23 +41,23 @@ public class ImageGameService
 
     private async Task CheckAnswer()
     {
-        if (_selectedItems[0].Value == _selectedItems[1].Value)
+        if (_selectedItems[0].Name == _selectedItems[1].Name)
         {
             ManageScores();
         }
         else
         {
             await Task.Delay(500);
-            Images.Where(i => i.Value == _selectedItems[0].Value || i.Value == _selectedItems[1].Value)
+            Images.Where(i => i.Name == _selectedItems[0].Name || i.Name == _selectedItems[1].Name)
                   .ToList()
-                  .ForEach(i => i.MarkAsInVisible());
+                  .ForEach(imageService.MarkAsInVisible);
 
             _creatorTurn = !_creatorTurn;
         }
 
         if (Images.All(i => i.IsVisible == true))
         {
-            OnEndGame?.Invoke("Game ended🤩");
+            OnEndGame.Invoke(this, new EndGameEventArgs { Message = "Game ended🤩" });
         }
         _selectedItems.Clear();
     }
@@ -72,11 +73,16 @@ public class ImageGameService
         => _creatorTurn ? _creatorScore++ : _guestScore++;
 }
 
+public class EndGameEventArgs : EventArgs
+{
+    public string Message { get; init; } = string.Empty;
+}
+
 public static class ImageGameServiceExtensions
 {
     private static int _id = 1;
     public static IEnumerable<Image> DuplicateImages(this IEnumerable<Image> source)
-        => source.Concat(source).Select(image => new Image() { Id = _id++, Value = image.Value });
+        => source.Concat(source).Select(image => new Image() { Id = _id++, Name = image.Name });
 
     public static IEnumerable<TSource> RandomizeImages<TSource>(this IEnumerable<TSource> source, int seed)
     {

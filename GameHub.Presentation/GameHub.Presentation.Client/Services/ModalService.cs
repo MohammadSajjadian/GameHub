@@ -9,15 +9,16 @@ public class ModalService(IJSRuntime jSRuntime) : IAsyncDisposable
     private TaskCompletionSource<bool> tcs = default!;
     private readonly ModalResult modalResult = new();
     public ModalOptions modalOptions = new();
-    public event Action? OnChange;
+    public event EventHandler<EventArgs>? OnFire;
 
     public async Task InitializeAsync()
         => jSObjectReference = await jSRuntime.InvokeAsync<IJSObjectReference>("import", "./CustomJs/Modal.js");
 
     public async Task<ModalResult> FireAsync(ModalOptions configure)
     {
+        await Task.Delay(250);
         modalOptions = configure;
-        OnChange?.Invoke();
+        OnFire?.Invoke(this, new EventArgs());
         await Show();
 
         return modalResult;

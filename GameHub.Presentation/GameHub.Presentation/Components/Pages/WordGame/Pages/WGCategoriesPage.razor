@@ -9,11 +9,10 @@
 @inject ICategoryService CategoryService
 @inject AuthenticationStateProvider Auth
 @inject NavigationManager NavManager
-@inject HealthService HealthService
 
 <div class="d-flex justify-content-between">
     <h3>Categories</h3>
-    <Health Value="HealthService.Value" />
+    <Health @ref="_health" />
 </div>
 @if (categoryDtos!.Any())
 {
@@ -30,9 +29,9 @@ else
 }
 
 @code {
+    private Health _health = default!;
     private List<CategoryDto>? categoryDtos = new();
     private bool? isAuthenticated;
-
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -42,11 +41,11 @@ else
             var authState = await ConfigAuthAsync();
             if (isAuthenticated is true)
             {
-                int profileHealth = await HealthService.GetProfileHealthAsync(authState.User.Identity?.Name!);
+                int profileHealth = await _health.GetProfileHealthAsync(authState.User.Identity?.Name!);
             }
             else
             {
-                int? localHealth = await HealthService.GetLocalHealthAsync();
+                int? localHealth = await _health.GetLocalHealthAsync();
             }
             categoryDtos = await CategoryService.GetAllAsync(cts.Token);
             StateHasChanged();

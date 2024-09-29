@@ -3,19 +3,21 @@
 @implements IAsyncDisposable
 @attribute [Authorize]
 
-@using GameHub.Application.ImageGame.Room.Dto
-@using GameHub.Application.ImageGame.Room.Queries.Requests
-@using GameHub.Application.ImageGame.Room.Commands.Requests
-@using GameHub.Application.ImageGame.Image.Queries.Requests
+@using Application.ImageGame.Room.Dto
+@using Application.ImageGame.Room.Queries.Requests
+@using Application.ImageGame.Room.Commands.Requests
+@using Application.ImageGame.Image.Queries.Requests
+@using Domain.Services.ImageGame
 
 @inject IMediator Mediator
 @inject AuthenticationStateProvider Auth
 @inject NavigationManager NavigationManager
-@inject ImageGameService ImageGameService
+@inject IImageGameService ImageGameService
+@inject IImageService ImageService
 @inject ModalService ModalService
 
 <h3>Guess the images</h3>
-<CountDown @ref="_timer" TimerOut="TimeOut" />
+<CountDown @ref="_timer" TimerOut='() => TimeOut("Times up")' />
 @if (_roomDto is not null && IsUserBelongToRoom(_currentUserName, _roomDto?.GuestUserName!))
 {
     <div class="d-flex justify-content-between mt-3">
@@ -30,7 +32,7 @@
             {
                 <div class="p-1">
                     <div class="card border-primary text-center" style="width: 130px; height: 130px;">
-                        <img src="/Images/@image.Value" class="img-fluid" style="width: 100%; height: 100%; object-fit: contain;" />
+                        <img src="/Images/@image.Name" class="img-fluid" style="width: 100%; height: 100%; object-fit: contain;" />
                     </div>
                 </div>
             }
@@ -73,7 +75,6 @@ else
     private RoomDto? _roomDto;
     private CountDown _timer = default!;
     private string _currentUserName = string.Empty;
-    private string _pussy = string.Empty;
     private string _message = string.Empty;
     private bool _isGameEnded;
 
@@ -106,7 +107,7 @@ else
         ImageGameService.Initialize(images, _roomDto.Id);
 
         await SignalrConnectionConfig();
-        ImageGameService.OnEndGame += EndGame;
+        ImageGameService.OnEndGame += async (sender, e) => await EndGame(sender, e);
         _timer.Start(_roomDto!.Time);
     }
 
@@ -118,9 +119,9 @@ else
 
         _hubConnection.On<int>("ReceiveProcessImageMessage", async id =>
         {
-            var image = ImageGameService.Images.FirstOrDefault(i => i.Id == id);
+            var image = ImageGameService.Images.First(i => i.Id == id);
 
-            image?.MarkAsVisible();
+            ImageService.MarkAsVisible(image);
             await InvokeAsync(StateHasChanged);
 
             await ImageGameService.AddSelectedItem(image!);
@@ -154,7 +155,7 @@ else
     private async Task<List<Image>?> GetImagesAsync()
     {
         var response = await Mediator.Send(new GetRandomImagesRequest(_roomDto!.CategoryId, (int)_roomDto!.BoardSize, _roomDto.Id));
-        return response.ImageDtos?.Select(i => new Image() { Value = i.Name }).ToList();
+        return response.ImageDtos?.Select(i => new Image() { Name = i.Name }).ToList();
     }
 
 
@@ -172,12 +173,18 @@ else
         => ImageGameService.CreatorTurn is true && _currentUserName == _roomDto!.CreatorUserName || ImageGameService.CreatorTurn is false && _currentUserName == _roomDto!.GuestUserName;
 
 
-    private async Task EndGame(string title)
+    private async Task EndGame(object? sender, EndGameEventArgs e)
+        => await HandleEndGame(e.Message);
+
+    private async Task TimeOut(string message)
+        => await HandleEndGame(message);
+
+    private async Task HandleEndGame(string message)
     {
         await Mediator.Send(new SetWinnerRequest(_roomDto!.Id, ImageGameService.CreatorScore, ImageGameService.GuestScore));
 
         _timer.Stop();
-        var result = await ModalService.FireAsync(new ModalOptions() { Title = title, Text = GetStatusMessage(), ShowConfirmButton = true, ConfirmButtonText = "Go to Room→" });
+        var result = await ModalService.FireAsync(new ModalOptions() { Title = message, Text = GetStatusMessage(), ShowConfirmButton = true, ConfirmButtonText = "Go to Room→" });
 
         StopGame();
 
@@ -185,12 +192,6 @@ else
         {
             NavigationManager.NavigateTo("/imageGame/room");
         }
-    }
-
-
-    private async Task TimeOut()
-    {
-        await EndGame("Time’s up⏱️");
     }
 
     private void StopGame()
@@ -224,7 +225,7 @@ else
 
     public async ValueTask DisposeAsync()
     {
-        ImageGameService.OnEndGame -= EndGame;
+        ImageGameService.OnEndGame -= async (sender, e) => await EndGame(sender, e);
         if (_isGameEnded is false)
         {
             await _hubConnection?.SendAsync("SendDisconnectedMessageAsync", _currentUserName == _roomDto!.CreatorUserName ? _roomDto.GuestId : _roomDto.CreatorId)!;

@@ -2,7 +2,6 @@
 using GameHub.Application.ImageGame.Image.Dto;
 using GameHub.Application.ImageGame.Image.Mapper;
 using GameHub.Application.ImageGame.Image.Repository;
-using GameHub.Domain.Entities.ImageGame;
 using GameHub.Infra.Context;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;

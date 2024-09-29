@@ -41,12 +41,11 @@
     }
 
     protected override void OnInitialized()
-    {
-        ModalService.OnChange += StateHasChanged;
-    }
+        => ModalService.OnFire += NotifyStateHasChanged;
+
+    private void NotifyStateHasChanged(object? sender, EventArgs e)
+        => StateHasChanged();
 
     public void Dispose()
-    {
-        ModalService.OnChange -= StateHasChanged;
-    }
+        => ModalService.OnFire -= NotifyStateHasChanged;
 }

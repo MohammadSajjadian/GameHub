@@ -6,6 +6,8 @@ public class Image
 {
     public int Id { get; set; }
     public string? Name { get; set; }
+    [NotMapped]
+    public bool IsVisible { get; set; }
 
     public int CategoryId { get; set; }
     [ForeignKey(nameof(CategoryId))]

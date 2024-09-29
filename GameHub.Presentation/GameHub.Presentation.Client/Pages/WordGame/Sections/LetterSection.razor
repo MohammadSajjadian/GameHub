@@ -1,4 +1,6 @@
-﻿<div class="col-auto">
+﻿@using Domain.Core.WordGame
+
+<div class="col-auto">
     <input @bind="Letter.Value" @bind:after="async () => await CheckAnswer.InvokeAsync()"
            class="form-control form-control-lg one-char-input text-center @(Letter!.IsCorrect && IsGuideActive ? "bg-success" : "")"
            disabled="@(Letter.IsDisable)" id="ex1" type="text" maxlength="1" />

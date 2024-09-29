@@ -12,7 +12,6 @@ public class UserMapper : IUserMapper
             Id = user.Id,
             UserName = user.UserName!,
             Health = user.Health,
-            Coin = user.Coin
         };
     }
 }

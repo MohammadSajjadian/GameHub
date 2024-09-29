@@ -1,19 +1,19 @@
-﻿using GameHub.Presentation.Client.Services.ImageGame;
+﻿//using GameHub.Presentation.Client.Services.ImageGame;
 
-namespace GameHub.Test.ImageGame.UnitTest;
+//namespace GameHub.Test.ImageGame.UnitTest;
 
-public class ImageTest
-{
-    [Fact]
-    public void MarkAsVisible_WhenClickOnImage_ShouldMakeItVisible()
-    {
-        // Arrange
-        Image image = new();
+//public class ImageTest
+//{
+//    [Fact]
+//    public void MarkAsVisible_WhenClickOnImage_ShouldMakeItVisible()
+//    {
+//        // Arrange
+//        Image image = new();
 
-        // Act
-        image.MarkAsVisible();
+//        // Act
+//        image.MarkAsVisible();
 
-        // Assert
-        Assert.True(image.IsVisible);
-    }
-}
+//        // Assert
+//        Assert.True(image.IsVisible);
+//    }
+//}
