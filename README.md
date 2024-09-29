@@ -44,6 +44,20 @@ ImageGame is a competitive, turn-based image-guessing game where two players fac
 - The game uses SignalR to manage real-time interactions between players.
 - Players receive instant feedback on their guesses and are updated on their opponent's moves.
 
+  ### ⌨️ Type Speed Test
+  The Type Speed Test is an interactive game that challenges the player's typing speed and accuracy. The player is required to type a predefined passage of text, and the game tracks both correct and incorrect 
+  keystrokes in real time.
+
+  #### Gameplay Mechanics:
+  
+  **Starting the Game:**
+  - The game begins when the player starts typing the displayed text.
+  - A timer starts on the first keystroke, and the player must type each character correctly.
+  
+  **Game End:**
+  -The game ends when the player completes typing the entire text.
+  -A modal will appear, showing the player's performance, including the number of mistakes (wrong peaks) and the total time taken to complete the text.
+  
 **Technologies Used:**
 - .NET 8 Blazor
 - SignalR
